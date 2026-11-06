@@ -1,0 +1,12 @@
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO bbc_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION actor_id(),has_scope(uuid,uuid,uuid,uuid,uuid),can_record(uuid),user_can_record(uuid,uuid) TO bbc_runtime;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO bbc_runtime;
+GRANT INSERT,UPDATE ON users,user_roles,access_scopes,sessions,login_attempts,records,documents,revisions,training,tasks,idempotency,notification_outbox,notifications,worker_runs,deviations,capas,changes,audits,findings,approved_answers,questionnaires,questions,materials,lots,containers,ehs_records TO bbc_runtime;
+GRANT INSERT ON attachments,approvals,quality_links,questionnaire_submissions,material_uses,inventory_transactions TO bbc_runtime;
+GRANT DELETE ON sessions,user_roles,access_scopes TO bbc_runtime;
+REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON audit_events FROM bbc_runtime;
+REVOKE UPDATE,DELETE,TRUNCATE ON attachments,approvals,workflow_rules,inventory_transactions,questionnaire_submissions FROM bbc_runtime;
+REVOKE CREATE ON SCHEMA public FROM bbc_runtime;

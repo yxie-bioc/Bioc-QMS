@@ -1,0 +1,58 @@
+services:
+  database:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: postgres
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+  migrate:
+    build: .
+    command: ["node", "--import", "tsx", "scripts/provision.ts"]
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ADMIN_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@database:5432/postgres
+      MIGRATION_DATABASE_URL: postgresql://bbc_owner:${BBC_OWNER_PASSWORD}@database:5432/bbc_prod
+      BBC_OWNER_PASSWORD: ${BBC_OWNER_PASSWORD:?required}
+      BBC_WEB_PASSWORD: ${BBC_WEB_PASSWORD:?required}
+      BBC_WORKER_PASSWORD: ${BBC_WORKER_PASSWORD:?required}
+      BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:?required}
+      BOOTSTRAP_NAME: ${BOOTSTRAP_NAME:-Platform Administrator}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:?required}
+  web:
+    build: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      APP_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?required}
+      COOKIE_SECURE: "true"
+      DATABASE_URL: postgresql://bbc_web:${BBC_WEB_PASSWORD}@database:5432/bbc_prod
+      ATTACHMENT_DIR: /app/var/attachments
+    volumes:
+      - attachment_data:/app/var/attachments
+    restart: unless-stopped
+  worker:
+    build: .
+    command: ["node", "--import", "tsx", "scripts/worker.ts"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://bbc_worker:${BBC_WORKER_PASSWORD}@database:5432/bbc_prod
+      NOTIFICATION_ADAPTER: in-app
+    restart: unless-stopped
+volumes:
+  database_data:
+  attachment_data:
