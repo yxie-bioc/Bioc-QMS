@@ -6,6 +6,7 @@ import os from 'node:os';
 import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
+import tls from 'node:tls';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -39,7 +40,7 @@ test('Packaged runtime: isolated Unicode paths, local setup, persistence, origin
   await commandLauncherSmoke();
   await startController(); console.log('Portable: controller ready');
   assert.equal((await fetch(`http://127.0.0.1:${control.port}/status`)).status,403);
-  const init=await action('initialize',{kind:'demo'});origin=init.value.address;assert.match(origin,/^http:\/\/127\.0\.0\.1:/);
+  const init=process.env.BBC_BROWSER_TEST==='1'?await managerSetup(t):await action('initialize',{kind:'demo'});origin=init.value.address;assert.match(origin,/^http:\/\/127\.0\.0\.1:/);
   users=Object.fromEntries((await action('credentials')).value.map(u=>[u.key,u]));
   assert.equal(new Set(Object.values(users).map(u=>u.password)).size,Object.keys(users).length);
   assert.equal((await get('/api/health')).status,200);
@@ -146,7 +147,7 @@ async function networkWorkflow(t){
  const ca=await fs.readFile(cert);
  origin=(await action('network',{mode:'lan-https',bind,port,origin:`https://${bind}:${port}`,cert,key})).value.address;
  const request=(p,method='GET',headers={},body)=>new Promise((resolve,reject)=>{
-  const r=https.request(origin+p,{method,ca,headers},response=>{const chunks=[];response.on('data',b=>chunks.push(b));response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,bytes:Buffer.concat(chunks)}));});r.on('error',reject);r.end(body);
+  const r=https.request(origin+p,{method,ca,headers,checkServerIdentity:(_hostname,certificate)=>tls.checkServerIdentity(bind,certificate)},response=>{const chunks=[];response.on('data',b=>chunks.push(b));response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,bytes:Buffer.concat(chunks)}));});r.on('error',reject);r.end(body);
  });
  const logged=await request('/api/auth/login','POST',{origin,'content-type':'application/json'},JSON.stringify(users.owner));assert.equal(logged.status,200);
  const cookies=logged.headers['set-cookie'];assert.match(cookies[0],/; Secure/i);assert.match(cookies[0],/; HttpOnly/i);assert.match(cookies[0],/SameSite=Strict/i);
@@ -181,4 +182,18 @@ async function upgradeWorkflow(t){
  const rows=await query(`postgresql://bbc_owner:${secrets.bbc_owner}@127.0.0.1:${db.port}/bbc_app`,"SELECT to_regclass('portable_should_rollback') AS failed_table, (SELECT count(*) FROM schema_migrations) AS migrations");assert.equal(rows[0].failed_table,null);assert.equal(Number(rows[0].migrations),9);
  await action('shutdown');await wait(()=>daemon.exitCode!==null);await startController(upgraded);await wait(async()=>!(await status()).busy);assert.equal((await status()).web,'Running');
  t.diagnostic('Synthetic package upgrade: mandatory old-version backup and independent restore check, new migration, record preservation, failed migration rollback and stopped website, and recovery with last working package passed.');
+}
+async function managerSetup(t){
+ const {chromium,expect}=await import('@playwright/test'),browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({viewport:{width:1280,height:1000}});
+ try{
+  await page.goto(`http://127.0.0.1:${control.port}/#${control.token}`);
+  await expect(page.getByRole('heading',{name:'首次设置',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'建立实例并启动',exact:true}).click();
+  try{await expect(page.locator('#web')).toHaveText('Running',{timeout:90000});}catch(e){throw new Error('Management setup failed: '+await page.locator('#error').innerText());}
+  await expect(page.getByRole('link',{name:'打开业务网站',exact:true})).toBeVisible();
+  await fs.mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/portable-manager.png',fullPage:true});
+  t.diagnostic('Chinese maintenance browser UI: first synthetic setup, running status, and business website link passed.');
+  return {value:{address:(await status()).address}};
+ }finally{await browser.close();}
 }

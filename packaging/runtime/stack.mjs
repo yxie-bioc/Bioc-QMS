@@ -4,6 +4,7 @@ import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
 import os from 'node:os';
+import { isIP } from 'node:net';
 import { fork } from 'node:child_process';
 import { safeEnv, freePort, waitFor, exists } from './common.mjs';
 export function privateAddresses() {
@@ -24,6 +25,8 @@ export function validateNetwork(input, kind) {
   const origin=new URL(input.origin||input.origins?.[0]||`${scheme}://${input.bind}:${port}`);
   if(origin.protocol!==scheme+':'||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash||Number(origin.port||443)!==port)
     throw new Error('请填写与所选端口一致的完整访问地址，例如 https://qms.internal.example:8765。');
+  if(origin.hostname==='localhost'||origin.hostname.endsWith('.localhost')||origin.hostname.startsWith('[')||(isIP(origin.hostname)&&origin.hostname!==input.bind))
+    throw new Error('内网网址必须使用所选内网 IP 或对应的内部主机名，不能继续使用本机回环地址。');
   return {mode,port,bind:input.bind,origins:[origin.origin],cert:input.cert||'',key:input.key||''};
 }
 export class Stack {
@@ -55,7 +58,6 @@ export class Stack {
       const { X509Certificate }=await import('node:crypto');
       const cert=new X509Certificate(tlsOptions.cert);
       const hostname=new URL(net.origins[0]).hostname;
-      const { isIP }=await import('node:net');
       if(!(isIP(hostname)?cert.checkIP(hostname):cert.checkHost(hostname))||Date.parse(cert.validTo)<Date.now()||Date.parse(cert.validFrom)>Date.now())
         throw new Error('证书主机名或有效期与访问地址不匹配，请联系 IT。');
     }

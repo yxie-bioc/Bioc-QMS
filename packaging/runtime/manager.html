@@ -40,6 +40,7 @@ function action(id,fn){$(id).onclick=async()=>{$('error').textContent='';$('acco
 action('start',()=>call('start'));action('stop',()=>call('stop'));action('backup',()=>call('backup'));
 action('initialize',async()=>{const result=await call('initialize',{kind:$('kind').value,email:$('email').value,password:$('password').value,name:$('adminName').value});$('password').value='';return result;});
 $('kind').onchange=()=>{$('adminFields').hidden=$('kind').value!=='clean';};
+$('networkMode').onchange=()=>{const mode=$('networkMode').value,host=mode==='local'?'127.0.0.1':$('bind').value;$('origin').value=host?(mode==='lan-https'?'https':'http')+'://'+host+':'+$('port').value:'';};
 action('switch',async()=>{initializedNetwork=false;return call('switch',{name:$('instanceList').value});});action('new',async()=>{initializedNetwork=false;return call('switch',{name:$('newInstance').value});});
 const backupPath=()=>$('restorePath').value||$('backupList').value;
 action('verify',()=>call('verify-backup',{backupPath:backupPath()}));action('restore',()=>call('restore',{backupPath:backupPath(),name:$('restoreName').value}));

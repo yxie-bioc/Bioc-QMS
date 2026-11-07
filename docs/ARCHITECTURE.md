@@ -1,6 +1,10 @@
 # Architecture and authority boundaries
 
-## Decision: Next.js + TypeScript + PostgreSQL
+## Windows portable revision (0.2.0)
+
+The existing business application and PostgreSQL controls are retained. `packaging/` adds a production Next.js standalone bundle, pinned native Node/PostgreSQL binaries, a local Chinese maintenance controller, and an explicit local/LAN gateway. The browser remains the business client. Default listeners are loopback-only; LAN HTTPS uses company-managed certificates. Database owner credentials remain in maintenance, with distinct web and worker logins. Program versions, data instances, private attachments and backups are separate. See [Windows maintenance](WINDOWS_MAINTENANCE.md) for the process, Unicode-path, network and upgrade boundaries and [current status](STATUS.md) for executed verification.
+
+## Original 0.1.0 decision: Next.js + TypeScript + PostgreSQL
 
 The initial workspace was empty; no existing application or repository instructions were overwritten. Node.js was available, PostgreSQL/Docker services were not. We chose Next.js 16.4.5, React 19.3.1, strict TypeScript, Zod 4.6.7 and `pg` 8.23.1. Exact dependency versions are locked in `package-lock.json`. Frappe was considered, but its additional framework/runtime services and custom app infrastructure were unnecessary for this environment and these explicitly controlled business transitions. No parallel implementation was built.
 
