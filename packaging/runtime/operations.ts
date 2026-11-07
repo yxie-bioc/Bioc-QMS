@@ -1,7 +1,7 @@
 // Trusted maintenance controller only. Never import this module into Next.js.
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { hashPassword, getPool } from "../../src/server/core";
+import { hashPassword, getPool, closePool } from "../../src/server/core";
 import { seed } from "../../scripts/seed";
 import { populate } from "../../scripts/sample-data";
 export { migrate } from "../../scripts/migrate";
@@ -20,7 +20,7 @@ export async function demo(owner: string, web: string, attachments: string, cred
   process.env.MIGRATION_DATABASE_URL = owner;
   process.env.ATTACHMENT_DIR = attachments;
   try { await populate(credentials); }
-  finally { await getPool().end(); }
+  finally { await closePool(); }
 }
 export async function bootstrap(url: string, input: { email: string; password: string; name: string }) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 254 ||

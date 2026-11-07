@@ -37,5 +37,6 @@ do {
     });
 } while (!stopping);
 await getPool().end();
+if (process.connected) process.disconnect?.();
 
 export {};

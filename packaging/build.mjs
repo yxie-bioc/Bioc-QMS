@@ -37,10 +37,12 @@ if(windows){
  await fs.copyFile(path.join(origin,'node.exe'),path.join(nodeRoot,'node.exe'));
  await fs.copyFile(path.join(origin,'LICENSE'),path.join(output,'licenses','NODE-LICENSE.txt'));
  await run('powershell.exe',['-NoProfile','-NonInteractive','-Command',"if ((Get-AuthenticodeSignature -LiteralPath $env:BBC_VERIFY_NODE).Status -ne 'Valid') { throw 'Node Authenticode verification failed' }"],{env:{...process.env,BBC_VERIFY_NODE:path.join(nodeRoot,'node.exe')}});
- const pgArchive=path.join(cache,'postgres.tgz');await download(pins.postgres.url,pgArchive,pins.postgres.integrity.slice(7),'sha512','base64');
- const pgExtract=path.join(cache,'pg');await fs.mkdir(pgExtract,{recursive:true});await run('tar.exe',['-xf',pgArchive,'-C',pgExtract]);
- await fs.cp(path.join(pgExtract,'package','native'),path.join(output,'postgres'),{recursive:true,dereference:true});
- for(const f of await fs.readdir(path.join(pgExtract,'package')))if(/license|notice|readme/i.test(f))await fs.copyFile(path.join(pgExtract,'package',f),path.join(output,'licenses','postgres-package-'+f));
+ const pgArchive=path.join(cache,'postgres-edb.zip');await download(pins.postgres.url,pgArchive,pins.postgres.sha256);
+ const pgExtract=path.join(cache,'pg-edb');await fs.mkdir(pgExtract,{recursive:true});
+ await run('tar.exe',['-xf',pgArchive,'-C',pgExtract,'pgsql/bin','pgsql/lib','pgsql/share','pgsql/server_license.txt','pgsql/commandlinetools_3rd_party_licenses.txt']);
+ for(const dir of ['bin','lib','share'])await fs.cp(path.join(pgExtract,'pgsql',dir),path.join(output,'postgres',dir),{recursive:true,dereference:true});
+ for(const f of ['server_license.txt','commandlinetools_3rd_party_licenses.txt'])await fs.copyFile(path.join(pgExtract,'pgsql',f),path.join(output,'licenses',f));
+
 }else{
  const mod=await import('@embedded-postgres/linux-x64');
  await fs.cp(path.resolve(path.dirname(mod.postgres),'..'),path.join(output,'postgres'),{recursive:true,dereference:true});
@@ -67,7 +69,7 @@ async function notices(dir,prefix=''){
 await notices('node_modules');
 await fs.copyFile('package-lock.json',path.join(output,'licenses','package-lock.json'));
 await fs.copyFile('packaging/runtimes.json',path.join(output,'licenses','runtimes.json'));
-for(const [from,to] of [['Start.cmd','启动网站.cmd'],['Stop.cmd','停止网站.cmd'],['Start.cmd','Start.cmd'],['Stop.cmd','Stop.cmd']])await fs.copyFile(path.join('packaging/windows',from),path.join(output,to));
+for(const [from,to] of [['Prerequisites.cmd','准备Windows运行环境.cmd'],['Start.cmd','启动网站.cmd'],['Stop.cmd','停止网站.cmd'],['Start.cmd','Start.cmd'],['Stop.cmd','Stop.cmd']])await fs.copyFile(path.join('packaging/windows',from),path.join(output,to));
 for(const doc of ['WINDOWS_QUICKSTART.zh-CN.md','WINDOWS_MAINTENANCE.md'])if(await fs.access(path.join('docs',doc)).then(()=>true,()=>false))await fs.copyFile(path.join('docs',doc),path.join(output,doc.replace('.md','.txt')));
 let commit=process.env.BBC_SOURCE_COMMIT||process.env.GITHUB_SHA||'local-uncommitted-test';
 const release={product:'BBC Internal Quality & Operations Platform',version:pkg.version,sourceCommit:commit,platform:windows?'win32-x64':`${process.platform}-${process.arch}-test`,

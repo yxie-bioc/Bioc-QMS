@@ -1236,9 +1236,9 @@ function Login({
             </span>
           </div>
           <div className="sample-note">
-            Development build · Synthetic records only
+            Internal controlled workspace · Sample rules pending approval
             <br />
-            Assigned development credentials are provided separately.
+            Use your assigned account. Test accounts are available only in the local test controller.
           </div>
         </form>
       </div>

@@ -33,7 +33,12 @@ export class Stack {
   child(name,script,env) {
     const child=fork(script,[],{cwd:path.join(this.appRoot,'app'),execPath:process.execPath,execArgv:[],env:safeEnv(env),silent:true,windowsHide:true});
     // Do not collect SQL/business bodies, tokens or environment in diagnostics.
-    child.stdout.on('data',()=>{}); child.stderr.on('data',()=>{});
+    const output=b=>{
+      let text=String(b).replace(/postgres(?:ql)?:\/\/[^\s]+/gi,'[database connection redacted]');
+      for(const secret of Object.values(this.cluster.secrets))text=text.replaceAll(secret,'[redacted]');
+      void fs.appendFile(path.join(this.instance,'logs',name+'.log'),text,{mode:0o600});
+    };
+    child.stdout.on('data',output); child.stderr.on('data',output);
     this.status[name]='Starting';
     child.on('error',()=>{this.status[name]='Failed';});
     child.on('exit',code=>{this.status[name]=this.stopping?'Stopped':`Exited (${code})`;});
@@ -53,16 +58,18 @@ export class Stack {
       if(!(cert.checkHost(hostname)||cert.checkIP(hostname))||Date.parse(cert.validTo)<Date.now()||Date.parse(cert.validFrom)>Date.now())
         throw new Error('证书主机名或有效期与访问地址不匹配，请联系 IT。');
     }
+    for(const name of ['web','worker']){const log=path.join(this.instance,'logs',name+'.log');if(await exists(log)&&(await fs.stat(log)).size>1024*1024)await fs.rename(log,log+'.previous').catch(()=>{});}
     const internalPort=await freePort();
     const base={APP_ENV:this.config.kind==='demo'?'development':'production',APP_ORIGIN:net.origins[0],APP_ORIGINS:net.origins.join(','),
       ATTACHMENT_DIR:path.join(this.instance,'attachments'),COOKIE_SECURE:String(net.mode==='lan-https'),
-      NOTIFICATION_ADAPTER:'in-app',BBC_VERSION:this.manifest.version};
+      NOTIFICATION_ADAPTER:'in-app',BBC_VERSION:this.manifest.version,BBC_INTERNAL_HOST:`127.0.0.1:${internalPort}`};
     this.child('web',path.join(this.appRoot,'runtime','server-process.mjs'),{...base,DATABASE_URL:this.cluster.url('bbc_web'),
       BBC_SERVER_ENTRY:path.join(this.appRoot,'app','server.js'),HOSTNAME:'127.0.0.1',PORT:String(internalPort)});
     try {
       await waitFor(async()=>{
         const response=await fetch(`http://127.0.0.1:${internalPort}/api/health`,{headers:{host:new URL(net.origins[0]).host},signal:AbortSignal.timeout(2000)});
-        return response.ok;
+        if(!response.ok)throw new Error(`网站健康检查返回 ${response.status}：${await response.text()}`);
+        return true;
       });
       this.status.web='Running';
       this.child('worker',path.join(this.appRoot,'runtime','worker.mjs'),{...base,DATABASE_URL:this.cluster.url('bbc_worker')});

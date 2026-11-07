@@ -1490,14 +1490,14 @@ test(
           DATABASE_URL: workerUrl,
           WORKER_DATABASE_URL: workerUrl,
         },
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
     );
     let output = "";
     const timer = setTimeout(() => child.kill("SIGKILL"), 10000);
-    child.stdout.on("data", (b) => {
+    child.stdout!.on("data", (b) => {
       output += b.toString();
-      if (output.includes('"delivered"')) child.kill("SIGTERM");
+      if (output.includes('"delivered"')) child.send("stop");
     });
     const code = await new Promise<number | null>((r) => child.on("exit", r));
     clearTimeout(timer);

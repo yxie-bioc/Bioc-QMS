@@ -1,10 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { query } from './operations.mjs';
 import { exists, jsonFile, readJson, execute, freePort } from './common.mjs';
 export class Cluster {
-  constructor(instance, pgRoot) { this.root=instance; this.pgRoot=pgRoot; this.data=path.join(instance,'postgres'); this.started=false; }
+  constructor(instance, pgRoot, executeQuery) { this.query=executeQuery; this.root=instance; this.pgRoot=pgRoot; this.data=path.join(instance,'postgres'); this.started=false; }
   bin(name) { return path.join(this.pgRoot,'bin',name+(process.platform==='win32'?'.exe':'')); }
   url(role, database='bbc_app') {
     const password=this.secrets[role];
@@ -29,7 +28,7 @@ export class Cluster {
       if(state && await exists(path.join(this.data,"postmaster.pid"))) {
         this.port=state.port;
         try {
-          const rows=await query(this.url('postgres','postgres'),'SHOW data_directory');
+          const rows=await this.query(this.url('postgres','postgres'),'SHOW data_directory');
           if(path.resolve(rows[0].data_directory)!==path.resolve(this.data)) throw new Error('数据库目录不匹配');
           this.started=true; await this.provision(); return;
         } catch(e) {
@@ -58,18 +57,18 @@ export class Cluster {
   async provision() {
     const admin=this.url('postgres','postgres');
     for(const role of ['bbc_owner','bbc_web','bbc_worker']) {
-      if(!(await query(admin,'SELECT 1 FROM pg_roles WHERE rolname=$1',[role])).length)
-        await query(admin,`CREATE ROLE ${role} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '${this.secrets[role]}'`);
+      if(!(await this.query(admin,'SELECT 1 FROM pg_roles WHERE rolname=$1',[role])).length)
+        await this.query(admin,`CREATE ROLE ${role} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '${this.secrets[role]}'`);
     }
-    if(!(await query(admin,"SELECT 1 FROM pg_roles WHERE rolname='bbc_runtime'")).length)
-      await query(admin,'CREATE ROLE bbc_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS');
-    await query(admin,'GRANT bbc_runtime TO bbc_web,bbc_worker');
-    if(!(await query(admin,"SELECT 1 FROM pg_database WHERE datname='bbc_app'")).length)
-      await query(admin,'CREATE DATABASE bbc_app OWNER bbc_owner');
+    if(!(await this.query(admin,"SELECT 1 FROM pg_roles WHERE rolname='bbc_runtime'")).length)
+      await this.query(admin,'CREATE ROLE bbc_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS');
+    await this.query(admin,'GRANT bbc_runtime TO bbc_web,bbc_worker');
+    if(!(await this.query(admin,"SELECT 1 FROM pg_database WHERE datname='bbc_app'")).length)
+      await this.query(admin,'CREATE DATABASE bbc_app OWNER bbc_owner');
   }
   async stop() {
     if(!this.started) return;
-    const actual=await query(this.url('postgres','postgres'),'SHOW data_directory');
+    const actual=await this.query(this.url('postgres','postgres'),'SHOW data_directory');
     if(path.resolve(actual[0].data_directory)!==path.resolve(this.data)) throw new Error('拒绝停止不属于此实例的数据库。');
     await execute(this.bin('pg_ctl'),['-D',this.data,'-m','fast','-w','-t','60','stop']);
     this.started=false;

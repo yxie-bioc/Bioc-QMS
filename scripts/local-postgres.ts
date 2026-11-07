@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 import { resolve } from "node:path";
 export async function startLocal(isTest = false) {
+  if (process.platform === "win32") return (await import("./windows-postgres")).startWindows(isTest);
   const dir = isTest ? `.local/test-runtime-${process.pid}` : ".local";
   await mkdir(dir, { recursive: true, mode: 0o700 });
   let secret: { admin: string; owner: string; web: string; worker: string };
@@ -38,7 +39,7 @@ export async function startLocal(isTest = false) {
     persistent: true,
     authMethod: "scram-sha-256",
     postgresFlags: ["-h", "127.0.0.1", "-c", "unix_socket_directories="],
-    onLog: () => {},
+    onLog: (message) => { if (process.env.CI && /FATAL|ERROR|PANIC/.test(message)) console.error(message); },
     onError: (e) => {
       if (String(e).includes("FATAL")) console.error(e);
     },

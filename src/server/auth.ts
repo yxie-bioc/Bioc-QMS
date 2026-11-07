@@ -110,7 +110,7 @@ export function allowedOrigins() {
 }
 export function checkHost(req: Request) {
   const host = req.headers.get("host") ?? new URL(req.url).host;
-  must(allowedOrigins().some((s) => new URL(s).host === host.toLowerCase()),
+  must(allowedOrigins().some((s) => new URL(s).host === host.toLowerCase()) || process.env.BBC_INTERNAL_HOST === host.toLowerCase(),
     "Request host is not allowed", 403);
 }
 export function checkOrigin(req: Request) {

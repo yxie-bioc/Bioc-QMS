@@ -59,6 +59,9 @@ export function getPool() {
   }
   return pool;
 }
+export async function closePool() {
+  const current = pool; pool = undefined; await current?.end();
+}
 export const sha = (s: string | Buffer) =>
   createHash("sha256").update(s).digest("hex");
 export const hashPassword = (s: string) => {

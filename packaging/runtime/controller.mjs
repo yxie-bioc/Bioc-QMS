@@ -39,14 +39,14 @@ async function loadConfig() {
   const file=path.join(instancePath(),'instance.json');
   config=await exists(file)?await readJson(file):null;
 }
-async function ensureCluster(){if(!cluster){cluster=new Cluster(instancePath(),pgRoot);await cluster.start();}}
+async function ensureCluster(){if(!cluster){cluster=new Cluster(instancePath(),pgRoot,query);await cluster.start();}}
 async function stop(){
   if(stack){await stack.stop();stack=null;}
   if(cluster){await cluster.stop();cluster=null;}
 }
 async function restoreCheck(backup,api={restoreBackup},base=path.join(root,'recovery-checks')) {
   const target=path.join(base,`check-${Date.now()}-${randomBytes(3).toString('hex')}`);
-  const c=new Cluster(target,pgRoot);
+  const c=new Cluster(target,pgRoot,query);
   try {await c.start();return {...await api.restoreBackup(c.url('bbc_owner'),backup,path.join(target,'attachments')),target};}
   finally {await c.stop();}
 }
@@ -91,7 +91,9 @@ async function start() {
   } catch(e) {if(stack){await stack.stop();stack=null;}throw e;}
 }
 async function initialize(input) {
-  if(config||await exists(path.join(instancePath(),'instance.json')))throw new Error('实例已存在。请选择其他实例名称。');
+  if(config?.initialized)throw new Error('实例已存在。请选择其他实例名称。');
+  if(input.kind==='clean'&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email||'')||(input.password||'').length<14||(input.password||'').length>200||!input.name?.trim()))throw new Error('请填写有效邮箱、姓名和至少 14 位密码。');
+  if(config&&config.kind!==input.kind)throw new Error('不能更改未完成实例的用途。请选择新的实例名称。');
   if(!['demo','clean'].includes(input.kind))throw new Error('请选择合成测试实例或独立空实例。');
   config={kind:input.kind,network:{mode:'local',port:8765},initialized:false,release:manifest,releaseRoot:appRoot};
   await fs.mkdir(instancePath(),{recursive:true,mode:0o700});await saveConfig();
@@ -109,7 +111,7 @@ async function restore(input) {
   if(!path.isAbsolute(input.backupPath||''))throw new Error('请选择完整备份文件夹路径。');
   const info=await readJson(path.join(input.backupPath,'instance-info.json'));
   if(info.release.sourceCommit!==manifest.sourceCommit)throw new Error('请先用该备份对应的原运行包恢复，再通过升级入口更新。不能直接混用数据库版本。');
-  const target=instancePath(input.name);const c=new Cluster(target,pgRoot);
+  const target=instancePath(input.name);const c=new Cluster(target,pgRoot,query);
   try {
     await c.start();
     const result=await restoreBackup(c.url('bbc_owner'),input.backupPath,path.join(target,'attachments'));
