@@ -8,7 +8,7 @@ export { migrate } from "../../scripts/migrate";
 export { makeBackup, restoreBackup } from "../../scripts/backup";
 
 export async function query(url: string, sql: string, args: unknown[] = []) {
-  const db = new pg.Client({ connectionString: url });
+  const db = new pg.Client({ connectionString: url, connectionTimeoutMillis: 5000, query_timeout: 10000 });
   await db.connect();
   try { return (await db.query(sql, args)).rows; }
   finally { await db.end(); }
@@ -26,7 +26,7 @@ export async function bootstrap(url: string, input: { email: string; password: s
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 254 ||
       input.password.length < 14 || input.password.length > 200 || !input.name.trim() || input.name.length > 200)
     throw new Error("请填写有效邮箱、姓名和至少 14 位的独立密码。");
-  const db = new pg.Client({ connectionString: url });
+  const db = new pg.Client({ connectionString: url, connectionTimeoutMillis: 5000, query_timeout: 10000 });
   await db.connect();
   try {
     await db.query("BEGIN");

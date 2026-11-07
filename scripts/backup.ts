@@ -170,9 +170,19 @@ export async function restoreBackup(
     throw new Error("Database backup checksum mismatch");
   const dump = JSON.parse(raw) as Dump;
   if (dump.format !== 1) throw new Error("Unsupported backup format");
+  const referenced = new Map(dump.tables.attachments.map((row) => [String(row.storage_key), row]));
+  if (referenced.size !== dump.files.length || dump.files.some((f) => {
+    const row = referenced.get(f.key);
+    return !row || row.sha256 !== f.sha256 || Number(row.size_bytes) !== f.size;
+  })) throw new Error("Backup attachment metadata does not match its byte manifest");
   const db = new pg.Client({ connectionString: databaseUrl });
   await db.connect();
   try {
+    for (const table of tables) {
+      const present = await db.query("SELECT to_regclass($1) AS name", ["public." + table]);
+      if (present.rows[0].name && (await db.query(`SELECT 1 FROM ${table} LIMIT 1`)).rowCount)
+        throw new Error("Restore requires a new empty database; refusing overwrite");
+    }
     const existing = await db.query(
       "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='records'",
     );

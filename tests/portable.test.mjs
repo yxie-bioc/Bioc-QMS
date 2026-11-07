@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
+import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 const windows=process.platform==='win32';
@@ -43,7 +44,7 @@ test('Packaged runtime: isolated Unicode paths, local setup, persistence, origin
   const before=await (await get('/api/overview',cookie)).json();assert.ok(before.records.length>0);
   for(const p of ['/api/overview','/api/search','/api/export'])assert.equal((await get(p)).status,401);
   const forged=await fetch(origin+'/api/auth/login',{method:'POST',headers:{origin:'https://evil.example',host:'evil.example','x-forwarded-host':'evil.example','content-type':'application/json'},body:JSON.stringify(users.owner)});assert.equal(forged.status,403);
-  assert.equal((await fetch(origin+'/api/health',{headers:{host:'evil.example'}})).status,403);
+  const forgedHost=await new Promise((resolve,reject)=>{const req=http.get(origin+'/api/health',{headers:{host:'evil.example'}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);});assert.equal(forgedHost,403);
   const outsider=await login('outsider');const scope=await (await get('/api/search',outsider)).json();assert.equal(scope.length,0);
   // The packaged launcher is idempotent, uses the bundled runtime, and needs no npm/Git.
   const launcher=spawn(node,[path.join(program,'runtime','launch.mjs')],{env,stdio:'ignore'});
@@ -80,7 +81,7 @@ async function browserWorkflow(t){
   if(context)await context.close();context=await browser.newContext({viewport:{width:1440,height:1000}});page=await context.newPage();
   await page.goto(origin);await page.locator('[name=email]').fill(users[who].email);await page.locator('[name=password]').fill(users[who].password);await page.getByRole('button',{name:'Sign in to workspace'}).click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
  };
- const openDoc=async()=>{await page.getByRole('button',{name:'Document control',exact:true}).click();await page.getByRole('button',{name:title,exact:true}).click();};
+ const openDoc=async()=>{await page.getByRole('button',{name:'Document control',exact:true}).click();await page.getByRole('button',{name:'Open '+title,exact:true}).click();};
  const confirm=async()=>{await page.getByRole('dialog').getByRole('button',{name:'Confirm action'}).click();await expect(page.getByRole('dialog')).toBeHidden();};
  const decision=async label=>{await page.getByRole('button',{name:label,exact:true}).click();await page.getByRole('dialog').locator('[name=reason]').fill('Synthetic Windows package browser acceptance');await confirm();};
  try{
@@ -93,7 +94,8 @@ async function browserWorkflow(t){
   await signin('approver');await openDoc();await decision('Approve revision');
   await signin('employee');await openDoc();
   // Reading acknowledgement is a revision-bound training action in the document detail.
-  await page.getByRole('button',{name:/Acknowledge reading|Complete training|Record completion/i}).first().click();
+  await page.locator('.module-tabs').getByRole('button',{name:'Training',exact:true}).click();
+  await page.getByRole('button',{name:'Acknowledge',exact:true}).click();
   await page.getByRole('dialog').locator('[name=reason]').fill('Read the fixed synthetic revision');await confirm();
   await signin('qa');await openDoc();await decision('Make effective');
   await signin('owner');await openDoc();const downloadEvent=page.waitForEvent('download');await page.getByRole('link',{name:/Download/i}).first().click();const download=await downloadEvent;assert.ok((await fs.readFile(await download.path())).toString().startsWith('%PDF-1.4'));

@@ -1,5 +1,7 @@
 # Operations runbook
 
+Windows runtime users: use [the Chinese quick guide](WINDOWS_QUICKSTART.zh-CN.md) and [portable maintenance guide](WINDOWS_MAINTENANCE.md). The developer/Compose commands below are not required for daily Windows operation.
+
 ## Environments and credentials
 
 Development: `npm ci` then `npm run dev`. The launcher runs a native PostgreSQL process, migrations, one-time synthetic seed, the web process and a separate worker. Default browser address: `http://localhost:3000`. The launcher also accepts `--host` and `--port` for managed previews. Keep that process running; data persists across restarts.

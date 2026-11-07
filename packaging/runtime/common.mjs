@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 export const readJson = async (p) => JSON.parse(await fs.readFile(p, 'utf8'));
 export async function exists(p) { try { await fs.access(p); return true; } catch(e) { if(e.code==='ENOENT') return false; throw e; } }
 export async function jsonFile(p, value) {
@@ -56,4 +56,13 @@ export function openBrowser(url) {
     ? spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command','Start-Process -FilePath $env:BBC_OPEN_URL'],{env,windowsHide:true,stdio:'ignore'})
     : spawn('xdg-open',[url],{env,stdio:'ignore'});
   child.on('error',()=>{}); child.unref();
+}
+
+export async function verifyPackage(root) {
+  const manifest=await readJson(path.join(root,'SHA256SUMS.json'));
+  for(const [relative,expected] of Object.entries(manifest)){
+    if(relative.includes('..')||path.isAbsolute(relative))throw new Error('运行包清单路径无效。');
+    const bytes=await fs.readFile(path.join(root,relative));
+    if(createHash('sha256').update(bytes).digest('hex')!==expected)throw new Error(`运行包文件损坏：${relative}。请重新完整解压。`);
+  }
 }

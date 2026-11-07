@@ -200,6 +200,17 @@ test("Public API, search, exports and mutations require authentication; login ch
   assert.match(response.headers.get("set-cookie")!, /HttpOnly/i);
   assert.match(response.headers.get("set-cookie")!, /SameSite=strict/i);
 });
+test("Configured origins cannot be widened by forged Host or forwarded headers", async () => {
+  const req = new NextRequest("http://evil.example/api/auth/login", {
+    method: "POST", headers: {host:"evil.example",origin:"http://evil.example","x-forwarded-host":"evil.example","content-type":"application/json"},
+    body: JSON.stringify({email:s.users.owner.email,password:s.users.owner.password}),
+  });
+  assert.equal((await POST(req,{params:Promise.resolve({path:["auth","login"]})})).status,403);
+  const safeHost = new NextRequest("http://localhost:3000/api/auth/login", {
+    method:"POST",headers:{host:"localhost:3000",origin:"http://evil.example","x-forwarded-host":"evil.example","content-type":"application/json"},body:"{}",
+  });
+  assert.equal((await POST(safeHost,{params:Promise.resolve({path:["auth","login"]})})).status,403);
+});
 test("Create a real SOP with a private file; scope is enforced for API, search, export and download", async () => {
   doc = await createDocument(
     who("owner"),

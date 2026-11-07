@@ -133,7 +133,7 @@ async function status() {
   let heartbeat=null;
   if(cluster?.started&&config?.initialized)try {heartbeat=(await query(cluster.url('bbc_owner'),'SELECT started_at,finished_at,delivered,failed,error FROM worker_runs ORDER BY started_at DESC LIMIT 1'))[0]??null;}catch{}
   return {manifest,appRoot,dataRoot:root,instance:prefs.instance,config:publicConfig(config),instances,backups,backupRoot:prefs.backupRoot,
-    busy,operation,lastError,lastResult,address:stack?.address??null,web:stack?.status.web??'Stopped',worker:stack?.status.worker??'Stopped',database:cluster?.started?'Running':'Stopped',heartbeat,addresses:privateAddresses()};
+    busy,operation,lastError,lastResult,address:stack?.address??null,web:stack?.status.web??'Stopped',worker:stack?.status.worker??'Stopped',database:cluster?.started?'Running':'Stopped',heartbeat,heartbeatStale:!!stack&&(!heartbeat||Date.now()-Date.parse(heartbeat.started_at)>90000),addresses:privateAddresses()};
 }
 let shuttingDown=false;
 async function shutdown(){

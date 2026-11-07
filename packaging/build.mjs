@@ -36,7 +36,7 @@ if(windows){
  const origin=path.join(expanded,`node-v${pins.node.version}-win-x64`);
  await fs.copyFile(path.join(origin,'node.exe'),path.join(nodeRoot,'node.exe'));
  await fs.copyFile(path.join(origin,'LICENSE'),path.join(output,'licenses','NODE-LICENSE.txt'));
- await run('powershell.exe',['-NoProfile','-NonInteractive','-Command',"if ((Get-AuthenticodeSignature -LiteralPath $env:BBC_VERIFY_NODE).Status -ne 'Valid') { throw 'Node Authenticode verification failed' }"],{env:{...process.env,BBC_VERIFY_NODE:path.join(nodeRoot,'node.exe')}});
+ await run('pwsh.exe',['-NoProfile','-NonInteractive','-Command',"$ErrorActionPreference='Stop'; if ((Get-AuthenticodeSignature -LiteralPath $env:BBC_VERIFY_NODE).Status -ne 'Valid') { throw 'Node Authenticode verification failed' }"],{env:{...process.env,BBC_VERIFY_NODE:path.join(nodeRoot,'node.exe')}});
  const pgArchive=path.join(cache,'postgres-edb.zip');await download(pins.postgres.url,pgArchive,pins.postgres.sha256);
  const pgExtract=path.join(cache,'pg-edb');await fs.mkdir(pgExtract,{recursive:true});
  await run('tar.exe',['-xf',pgArchive,'-C',pgExtract,'pgsql/bin','pgsql/lib','pgsql/share','pgsql/server_license.txt','pgsql/commandlinetools_3rd_party_licenses.txt']);

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { readJson, exists, waitFor, safeEnv, openBrowser, alive, delay } from './common.mjs';
+import { readJson, exists, waitFor, safeEnv, openBrowser, alive, delay, verifyPackage } from './common.mjs';
 const appRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const root=path.resolve(process.env.BBC_DATA_HOME||path.join(process.env.LOCALAPPDATA||process.env.HOME,'BBC-QMS'));
 const statePath=path.join(root,'controller.json');
@@ -25,6 +25,7 @@ try {
     await waitFor(async()=>!alive(state.pid));state=null;
   }
   if(!state){
+    await verifyPackage(appRoot);
     await fs.mkdir(root,{recursive:true,mode:0o700});
     const child=spawn(process.execPath,[path.join(appRoot,'runtime','controller.mjs')],{cwd:appRoot,env:safeEnv({BBC_DATA_HOME:root}),detached:true,stdio:'ignore',windowsHide:true});
     child.on('error',()=>{});child.unref();state=await waitFor(connect,45000);
