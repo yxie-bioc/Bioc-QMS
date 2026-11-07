@@ -80,7 +80,7 @@ export function openBrowser(url) {
 export async function verifyPackage(root) {
   const manifest=await readJson(path.join(root,'SHA256SUMS.json'));
   for(const [relative,expected] of Object.entries(manifest)){
-    if(relative.includes('..')||path.isAbsolute(relative))throw new Error('运行包清单路径无效。');
+    if(relative.split(/[\\/]/).includes('..')||path.isAbsolute(relative))throw new Error('运行包清单路径无效。');
     const bytes=await fs.readFile(path.join(root,relative));
     if(createHash('sha256').update(bytes).digest('hex')!==expected)throw new Error(`运行包文件损坏：${relative}。请重新完整解压。`);
   }

@@ -14,7 +14,7 @@ Default access is local only. Colleagues later use the host's configured website
 
 ## Developer startup
 
-Use Node.js 24 (tested: 24.22.1), npm and an ordinary non-root user. The executed development checks used Linux; Windows/WSL2 and macOS compatibility have not been exercised.
+Use Node.js 24 (tested: 24.22.1), npm and an ordinary non-root user. Business regression checks have been executed on Linux and Windows Server 2022. Portable-package acceptance and remaining desktop/LAN checks are recorded separately in docs/STATUS.md. macOS and WSL are not delivery targets for this revision.
 
 ```sh
 npm ci

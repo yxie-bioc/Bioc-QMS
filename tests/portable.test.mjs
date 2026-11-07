@@ -36,7 +36,7 @@ async function get(url,cookie){return fetch(origin+url,{headers:cookie?{cookie}:
 test('Packaged runtime: isolated Unicode paths, local setup, persistence, origin checks, backup, restore and clean bootstrap',{timeout:300000},async(t)=>{
  await fs.mkdir(scratch,{recursive:true});await fs.cp(source,program,{recursive:true,dereference:true});
  try{
-  if(windows)await commandLauncherSmoke();
+  await commandLauncherSmoke();
   await startController(); console.log('Portable: controller ready');
   assert.equal((await fetch(`http://127.0.0.1:${control.port}/status`)).status,403);
   const init=await action('initialize',{kind:'demo'});origin=init.value.address;assert.match(origin,/^http:\/\/127\.0\.0\.1:/);
@@ -123,10 +123,11 @@ async function run(file,args,options={}){
 async function commandLauncherSmoke(){
  const home=path.join(scratch,'启动入口 数据');
  const options={env:{...env,BBC_DATA_HOME:home,BBC_LAUNCH_CMD:path.join(program,'启动网站.cmd')},windowsVerbatimArguments:true};
- const output=await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options);
+ const output=windows?await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options):await run(node,[path.join(program,'runtime','launch.mjs')],{env:options.env});
  const state=await fs.readFile(path.join(home,'controller.json')).then(b=>JSON.parse(b)).catch(()=>{throw new Error('Windows launcher did not start: '+output);});
  assert.equal((await fetch(`http://127.0.0.1:${state.port}/status`,{headers:{authorization:`Bearer ${state.token}`}})).status,200);
- options.env.BBC_LAUNCH_CMD=path.join(program,'停止网站.cmd');await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options);
+ options.env.BBC_LAUNCH_CMD=path.join(program,'停止网站.cmd');
+ if(windows)await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options);else await run(node,[path.join(program,'runtime','launch.mjs'),'--stop'],{env:options.env});
  await assert.rejects(fs.access(path.join(home,'controller.json')));
 }
 async function networkWorkflow(t){
