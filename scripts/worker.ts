@@ -9,6 +9,10 @@ for (const s of ["SIGINT", "SIGTERM"])
     stopping = true;
     wake?.();
   });
+process.on("message", (message) => {
+  if (message === "stop") { stopping = true; wake?.(); }
+});
+process.on("disconnect", () => { stopping = true; wake?.(); });
 console.log(
   "Server reminder worker started. Delivery: in-app; no external email integration.",
 );

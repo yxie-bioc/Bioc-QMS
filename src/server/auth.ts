@@ -103,12 +103,20 @@ export async function logout(request: Request) {
       sha(token),
     ]);
 }
+export function allowedOrigins() {
+  const configured = process.env.APP_ORIGINS ?? process.env.APP_ORIGIN;
+  must(configured, "Application origin is not configured", 503);
+  return configured.split(",").map((s) => new URL(s.trim()).origin);
+}
+export function checkHost(req: Request) {
+  const host = req.headers.get("host") ?? new URL(req.url).host;
+  must(allowedOrigins().some((s) => new URL(s).host === host.toLowerCase()),
+    "Request host is not allowed", 403);
+}
 export function checkOrigin(req: Request) {
+  checkHost(req);
   const origin = req.headers.get("origin");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  const allowed = new Set([process.env.APP_ORIGIN, new URL(req.url).origin]);
-  if (host) allowed.add(`${new URL(req.url).protocol}//${host}`);
-  must(origin && allowed.has(origin), "Request origin is not allowed", 403);
+  must(origin && allowedOrigins().includes(origin), "Request origin is not allowed", 403);
   must(
     req.headers.get("sec-fetch-site") !== "cross-site",
     "Cross-site request denied",

@@ -3,8 +3,10 @@ import { mkdir, readFile, writeFile, access } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import { spawn } from "node:child_process";
+import net from "node:net";
+import { resolve } from "node:path";
 export async function startLocal(isTest = false) {
-  const dir = isTest ? ".local/test-runtime" : ".local";
+  const dir = isTest ? `.local/test-runtime-${process.pid}` : ".local";
   await mkdir(dir, { recursive: true, mode: 0o700 });
   let secret: { admin: string; owner: string; web: string; worker: string };
   try {
@@ -20,7 +22,14 @@ export async function startLocal(isTest = false) {
       mode: 0o600,
     });
   }
-  const port = 55432;
+  const port = await new Promise<number>((resolve, reject) => {
+    const probe = net.createServer();
+    probe.on("error", reject);
+    probe.listen(isTest ? 0 : Number(process.env.BBC_DEV_DB_PORT ?? 55432), "127.0.0.1", () => {
+      const chosen = (probe.address() as net.AddressInfo).port;
+      probe.close(() => resolve(chosen));
+    });
+  });
   const server = new EmbeddedPostgres({
     databaseDir: `${dir}/postgres`,
     user: "postgres",
@@ -80,7 +89,7 @@ export async function startLocal(isTest = false) {
     `postgresql://${u}:${p}@127.0.0.1:${port}/${db}`;
   const runtime = [
     `DATABASE_URL=${url("bbc_web", secret.web, "bbc_dev")}`,
-    `ATTACHMENT_DIR=${isTest ? "./var/test-attachments" : "./var/attachments"}`,
+    `ATTACHMENT_DIR=${isTest ? resolve(dir, "attachments") : "./var/attachments"}`,
     `APP_ENV=${isTest ? "test" : "development"}`,
     "APP_ORIGIN=http://localhost:3000",
     "NOTIFICATION_ADAPTER=in-app",
@@ -88,6 +97,7 @@ export async function startLocal(isTest = false) {
     "NEXT_TELEMETRY_DISABLED=1",
   ];
   const operations = [
+    `TEST_WORK_DIR=${resolve(dir)}`,
     ...runtime,
     `MIGRATION_DATABASE_URL=${url("bbc_owner", secret.owner, "bbc_dev")}`,
     `WORKER_DATABASE_URL=${url("bbc_worker", secret.worker, "bbc_dev")}`,
@@ -96,7 +106,7 @@ export async function startLocal(isTest = false) {
     `ADMIN_DATABASE_URL=${url("postgres", secret.admin, "postgres")}`,
   ];
   if (isTest)
-    await writeFile(".env.test.local", operations.join("\n") + "\n", {
+    await writeFile(`${dir}/test.env`, operations.join("\n") + "\n", {
       mode: 0o600,
     });
   else {
@@ -118,7 +128,7 @@ export async function startLocal(isTest = false) {
   );
   return {
     stop: () => server.stop(),
-    envFile: isTest ? ".env.test.local" : ".env.local",
+    envFile: isTest ? `${dir}/test.env` : ".env.local",
   };
 }
 if (process.argv[1]?.endsWith("/local-postgres.ts")) {

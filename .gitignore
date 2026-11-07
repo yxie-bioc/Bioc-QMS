@@ -9,3 +9,9 @@ coverage/
 *.tsbuildinfo
 *.log
 next-env.d.ts
+dist/
+.cache/
+test-results/
+playwright-report/
+*.zip
+runtime-data/

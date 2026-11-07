@@ -7,3 +7,8 @@ var
 backups
 *.zip
 *.log
+dist
+.cache
+test-results
+playwright-report
+runtime-data

@@ -46,7 +46,7 @@ const next = spawn(
     "node_modules/next/dist/bin/next",
     "dev",
     "--hostname",
-    hostAt >= 0 ? process.argv[hostAt + 1] : "0.0.0.0",
+    hostAt >= 0 ? process.argv[hostAt + 1] : "127.0.0.1",
     "--port",
     portAt >= 0 ? process.argv[portAt + 1] : (process.env.PORT ?? "3000"),
   ],

@@ -1,0 +1,50 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BBC 网站管理</title>
+<style>
+:root{font-family:Segoe UI,Microsoft YaHei,sans-serif;color:#173135;background:#eff5f4}body{max-width:1080px;margin:35px auto;padding:0 24px}h1{font-size:28px;margin:0}h2{font-size:18px;margin-top:0}.top{display:flex;justify-content:space-between;align-items:center}small,.muted{color:#576e72}section{background:white;border:1px solid #d6e2e1;padding:24px;border-radius:12px;margin:18px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button,.link{background:#087f81;color:white;border:0;border-radius:6px;padding:11px 17px;cursor:pointer;text-decoration:none;font-size:14px;display:inline-block}button.secondary{background:#e8f1f0;color:#234649}button:disabled{opacity:.5;cursor:wait}input,select{padding:10px;border:1px solid #bed0ce;border-radius:5px;box-sizing:border-box;width:100%;font:inherit}label{display:block;margin:12px 0;font-size:14px}label>span{display:block;margin-bottom:6px}.note{padding:12px 15px;background:#fff3d5;border-left:3px solid #d89418;line-height:1.7}.status{display:flex;gap:20px;flex-wrap:wrap;margin:18px 0}pre{white-space:pre-wrap;word-break:break-all;background:#f0f5f4;padding:14px;font-size:13px;max-height:350px;overflow:auto}#error{color:#a32f24;white-space:pre-wrap}#notice{min-height:24px;color:#17696a}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;border-bottom:1px solid #dae5e4;padding:10px;word-break:break-word}summary{cursor:pointer;font-weight:600}a{color:#087f81}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+<div class="top"><div><small>BBC INTERNAL QUALITY & OPERATIONS</small><h1>网站运行管理</h1></div><span id="version"></span></div>
+<p class="muted">此管理页只在主机本地开放。日常业务操作在英文网站中完成。</p>
+<div class="note">主机必须保持开机、联网且不休眠。关闭浏览器后，网站与提醒继续运行；停止网站或主机关机后，服务与提醒停止。</div>
+<p id="notice" role="status"></p><p id="error" role="alert"></p>
+<section><h2>运行状态</h2><div class="status"><span>网站：<b id="web"></b></span><span>提醒：<b id="worker"></b></span><span>数据库：<b id="database"></b></span></div>
+<p>当前实例：<b id="instance"></b> · <span id="mode"></span></p><p id="address"></p>
+<div class="row"><button id="start">启动网站</button><a id="open" class="link" target="_blank" rel="noreferrer">打开业务网站</a><button id="stop" class="secondary">停止网站、提醒和数据库</button><button id="credentials" class="secondary">查看合成测试账号</button></div><div id="accounts"></div></section>
+<section id="setup"><h2>首次设置</h2><p>合成测试实例包含随机密码与明确标识的示例记录。独立空实例只建立技术管理员，不授予任何业务批准资格。</p>
+<label><span>实例用途</span><select id="kind"><option value="demo">合成测试（推荐先用此项）</option><option value="clean">独立空实例（实际使用前仍需批准规则与安全配置）</option></select></label>
+<div id="adminFields" hidden><label><span>管理员姓名</span><input id="adminName" autocomplete="name"></label><label><span>管理员邮箱</span><input id="email" type="email" autocomplete="email"></label><label><span>管理员密码（至少 14 位）</span><input id="password" type="password" autocomplete="new-password" minlength="14"></label></div>
+<button id="initialize">建立实例并启动</button></section>
+<div class="grid"><section><h2>备份与恢复</h2><p id="backupState"></p><p class="muted">包含数据库记录与真实附件。备份含敏感数据，应保存在受控位置；同盘副本不能抵御主机或硬盘损坏。</p><button id="backup">立即完整备份</button>
+<label><span>已有备份</span><select id="backupList"></select></label><label><span>或填写备份文件夹完整路径</span><input id="restorePath" placeholder="D:\BBC-QMS-Backups\demo-manual-..."></label><label><span>恢复到新实例名称</span><input id="restoreName" placeholder="restored-2026-11"></label>
+<div class="row"><button id="verify" class="secondary">独立恢复核对</button><button id="restore" class="secondary">恢复为新实例</button></div><p class="muted">不会覆盖现有实例。核对通过后在右侧切换到恢复实例，再启动网站。</p>
+<details><summary>更改备份位置</summary><label><span>目标文件夹（会创建专用子目录）</span><input id="backupPath" placeholder="D:\CompanyBackup"></label><button id="saveBackupPath" class="secondary">保存备份位置</button></details>
+</section><section><h2>实例与更新</h2><label><span>已有实例</span><select id="instanceList"></select></label><button id="switch" class="secondary">停止当前服务并切换</button><label><span>新建独立实例名称</span><input id="newInstance" placeholder="company"></label><button id="new" class="secondary">选择新实例并设置</button>
+<p>更新：完整解压新版本到另一个目录，保留旧运行包，双击新包的“启动网站”。系统先停止旧服务，再备份并独立恢复核对，最后执行迁移。数据目录不随程序覆盖。</p><p class="note">迁移失败时网站不会继续启动。请用升级前版本，将其备份恢复为新实例；仅换回旧程序不等于数据库回退。</p></section></div>
+<section><h2>本机与内网共享</h2><p>同事只需网址与各自账号。数据库不对内网开放；管理入口始终只在本机。</p>
+<div class="grid"><div><label><span>访问模式</span><select id="networkMode"><option value="local">仅本机（默认）</option><option value="lan-test">内网 HTTP 合成数据试验</option><option value="lan-https">内网 HTTPS（需公司证书）</option></select></label><label><span>网站端口</span><input id="port" type="number" value="8765" min="1024" max="65535"></label><label><span>本机内网地址</span><select id="bind"></select></label><label><span>同事访问的完整地址</span><input id="origin" placeholder="https://qms.internal.example:8765"></label></div>
+<div><label><span>PEM 证书链文件完整路径</span><input id="cert" placeholder="C:\BBC-QMS-Certificates\chain.pem"></label><label><span>PEM 私钥文件完整路径</span><input id="key" placeholder="C:\BBC-QMS-Certificates\key.pem"></label><p class="note">HTTP 模式仅供合成数据试验。HTTPS 需要 IT 配置主机名、证书和客户端信任；不要忽略证书警告。防火墙规则必须由 IT 明确批准，仅开放所选网站端口和公司子网。</p></div></div>
+<button id="network">保存并重新启动</button><p class="muted">本工具不会安装系统服务、自动启动项、防火墙规则或根证书。网络地址变化时重新选择当前地址；固定 IP 或内部 DNS 请由 IT 配置。</p></section>
+<section><details><summary>诊断信息与当前版本</summary><pre id="diagnostics"></pre><p>诊断仅显示路径、版本、进程状态和最近维护结果；不显示数据库密码或令牌。数据库高权限人员和 Windows 管理员仍可接触底层数据。</p><p>第三方邮件、DocuSign、Drive、Smartsheet、Labguru 尚未连接。提醒仅在站内发送。此版本不代表正式验证或 GLP/GMP/21 CFR Part 11 合规。</p></details></section>
+<script>
+const $=id=>document.getElementById(id);let token=location.hash.slice(1)||sessionStorage.getItem('bbc-controller-token');if(token){sessionStorage.setItem('bbc-controller-token',token);history.replaceState(null,'',location.pathname);}let state=null,initializedNetwork=false;
+async function call(action,input={}){const response=await fetch('/'+action,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(input)});const data=await response.json();if(!response.ok)throw new Error(data.error);return data;}
+function options(id,rows,value,label){const old=$(id).value;$(id).replaceChildren(...rows.map(r=>{const o=document.createElement('option');o.value=value(r);o.textContent=label(r);return o;}));if([...$(id).options].some(o=>o.value===old))$(id).value=old;}
+async function refresh(){try{const r=await fetch('/status',{headers:{authorization:'Bearer '+token}});const s=await r.json();if(!r.ok)throw new Error(s.error);state=s;
+$('version').textContent='v'+s.manifest.version;$('instance').textContent=s.instance;$('web').textContent=s.web;$('worker').textContent=s.worker;$('database').textContent=s.database;$('mode').textContent=s.config?(s.config.kind==='demo'?'合成测试':'独立空实例'):'尚未设置';$('address').textContent=s.address?'访问地址：'+s.address:'尚未运行';$('open').hidden=!s.address;if(s.address)$('open').href=s.address;$('setup').hidden=!!s.config;$('credentials').hidden=s.config?.kind!=='demo';
+$('notice').textContent=s.busy?'正在执行：'+s.operation:'就绪';if(s.lastError)$('error').textContent=s.lastError;for(const b of document.querySelectorAll('button'))b.disabled=s.busy;
+const b=s.config?.lastBackup;$('backupState').textContent='备份位置：'+s.backupRoot+'\n'+(b?(b.ok?'最近成功：':'最近失败：')+b.at:'尚未成功备份');
+options('instanceList',s.instances,r=>r.name,r=>r.name+' · '+r.kind);options('backupList',s.backups,r=>r.path,r=>r.name);options('bind',s.addresses,r=>r,r=>r);
+if(!initializedNetwork&&s.config){const n=s.config.network;$('networkMode').value=n.mode;$('port').value=n.port;if(n.bind)$('bind').value=n.bind;$('origin').value=n.origins?.[0]??'';$('cert').value=n.cert??'';$('key').value=n.key??'';initializedNetwork=true;}
+$('diagnostics').textContent=JSON.stringify({version:s.manifest,program:s.appRoot,data:s.dataRoot,instance:s.instance,workerHeartbeat:s.heartbeat,addresses:s.addresses,lastResult:s.lastResult,upgrade:s.config?.upgrade},null,2);
+}catch(e){$('error').textContent=e.message;}}
+function action(id,fn){$(id).onclick=async()=>{$('error').textContent='';$('accounts').replaceChildren();try{const result=await fn();$('notice').textContent='操作完成';if(result)$('diagnostics').textContent=JSON.stringify(result,null,2);await refresh();}catch(e){$('error').textContent=e.message;}};}
+action('start',()=>call('start'));action('stop',()=>call('stop'));action('backup',()=>call('backup'));
+action('initialize',async()=>{const result=await call('initialize',{kind:$('kind').value,email:$('email').value,password:$('password').value,name:$('adminName').value});$('password').value='';return result;});
+$('kind').onchange=()=>{$('adminFields').hidden=$('kind').value!=='clean';};
+action('switch',async()=>{initializedNetwork=false;return call('switch',{name:$('instanceList').value});});action('new',async()=>{initializedNetwork=false;return call('switch',{name:$('newInstance').value});});
+const backupPath=()=>$('restorePath').value||$('backupList').value;
+action('verify',()=>call('verify-backup',{backupPath:backupPath()}));action('restore',()=>call('restore',{backupPath:backupPath(),name:$('restoreName').value}));
+action('saveBackupPath',()=>call('backup-path',{path:$('backupPath').value}));
+action('network',()=>call('network',{mode:$('networkMode').value,port:Number($('port').value),bind:$('bind').value,origin:$('origin').value,cert:$('cert').value,key:$('key').value}));
+action('credentials',async()=>{const users=await call('credentials');const table=document.createElement('table');for(const u of users){const row=table.insertRow();for(const x of [u.name,u.email,u.password])row.insertCell().textContent=x;}$('accounts').append(table);return null;});
+refresh();setInterval(refresh,3000);
+</script></html>

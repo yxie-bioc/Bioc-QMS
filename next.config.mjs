@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const config = {
+  output: "standalone",
   poweredByHeader: false,
   outputFileTracingExcludes: {
     "/*": ["./.local/**/*", "./var/**/*", "./backups/**/*", "./.env*"],

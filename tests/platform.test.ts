@@ -42,6 +42,7 @@ import { runWorker } from "../src/server/worker";
 import { GET, POST } from "../src/app/api/[...path]/route";
 import { NextRequest } from "next/server";
 import { makeBackup, restoreBackup } from "../scripts/backup";
+const testRoot = process.env.TEST_WORK_DIR!;
 let s: NonNullable<Awaited<ReturnType<typeof seed>>>;
 let doc: { id: string; revisionId: string }, fileId: string;
 let owner: pg.Client;
@@ -126,8 +127,8 @@ before(async () => {
   await owner.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
   await migrate(process.env.TEST_MIGRATION_DATABASE_URL!);
   s = (await seed(process.env.TEST_MIGRATION_DATABASE_URL!))!;
-  await mkdir(".local", { recursive: true });
-  await writeFile(".local/test-fixtures.json", JSON.stringify(s), {
+  await mkdir(testRoot, { recursive: true });
+  await writeFile(`${testRoot}/fixtures.json`, JSON.stringify(s), {
     mode: 0o600,
   });
 });
@@ -1506,12 +1507,12 @@ test(
 );
 
 test("Database and actual attachment bytes restore into an independent database and storage directory", async () => {
-  await rm(".local/test-backup", { recursive: true, force: true });
-  await rm("./var/restored-test-attachments", { recursive: true, force: true });
+  await rm(`${testRoot}/backup`, { recursive: true, force: true });
+  await rm(`${testRoot}/restored-attachments`, { recursive: true, force: true });
   const backup = await makeBackup(
     process.env.TEST_MIGRATION_DATABASE_URL!,
     process.env.ATTACHMENT_DIR!,
-    ".local/test-backup",
+    `${testRoot}/backup`,
   );
   const admin = new pg.Client({
     connectionString: process.env.ADMIN_DATABASE_URL,
@@ -1529,8 +1530,8 @@ test("Database and actual attachment bytes restore into an independent database 
   );
   const result = await restoreBackup(
     restoreUrl,
-    ".local/test-backup",
-    "./var/restored-test-attachments",
+    `${testRoot}/backup`,
+    `${testRoot}/restored-attachments`,
   );
   assert.equal(result.files, backup.files);
   assert.ok(result.records > 0);
