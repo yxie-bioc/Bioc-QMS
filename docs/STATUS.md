@@ -1,5 +1,21 @@
 # Delivery status and verification
 
+Current revision: **0.2.0 Windows portable website**. Source baseline: `de860459c9ed566b3e446219bb70f92d135527cb`; development branch `codex/windows-portable`, PR #1. No main merge or production data migration. The earlier 0.1.0 assessment below is preserved as history, not current Windows evidence.
+
+## 0.2.0 verification record
+
+- Linux: 29 PostgreSQL integration checks, strict TypeScript, production standalone build, extracted runtime lifecycle/backup/restore, full Chromium SOP workflow, and synthetic upgrade/failure recovery checks executed successfully.
+- Windows Server 2022 x64: 29 business integration checks, TypeScript, production package build, ZIP extraction and full packaged-runtime acceptance passed in [CI run 42333997420](https://github.com/yxie-bioc/Bioc-QMS/actions/runs/42333997420), source commit `8574a21953175a834b72cb05ba30edc0a410fbe3`. The runtime was published only after the extracted-package checks passed.
+- Windows packaged checks additionally exercised Chinese/space paths, the actual Start/Stop command files, Chinese first-setup management UI, random credentials, duplicate startup, stopped/restarted processes, controller-crash recovery, occupied ports, complete backup and independent restore, clean admin bootstrap, and upgrade preservation/failure rollback. On the same Windows host, the LAN interface and CA-verified HTTPS covered login, upload/download, Secure/HttpOnly/SameSite=Strict cookies, rejected Host/Origin requests, and a database unavailable on the LAN interface. No firewall or OS certificate trust changes were made.
+- The new browser workflow covers creation, Chinese-named upload, independent review and approval, revision-bound training, effectiveness, download, new revision/history and logout. Calendar-only dates display correctly in America/New_York; record details retain their site/customer/project context.
+- Source migrations 001–008 retain their original content. No production business schema migration was required for packaging. Upgrade tests add temporary synthetic migrations only inside isolated test packages.
+- Windows runtime pins, checksums, source commit, retained licenses, private directory boundaries, network configuration and maintenance responsibilities are described in WINDOWS_MAINTENANCE.md.
+
+Not established by these checks: a clean Windows 10/11 desktop with no preinstalled tools; interactive default-browser/UAC/SmartScreen experience; a Chinese Windows account name (Unicode paths are separately tested); a second physical LAN client; company DNS/certificate trust/firewall setup; off-machine disaster recovery; load/failover; formal business validation. Automatic backup scheduling, Windows service installation and third-party integrations are not implemented.
+
+## Historical 0.1.0 baseline
+
+
 Development release: `0.1.0`. Work performed in the November 5, 2026 (America/New_York) session; machine logs may use November 6 UTC. This file describes a runnable development baseline, not completed formal validation or authorization to use real quality records.
 
 ## Stage progress
@@ -55,4 +71,4 @@ Browser verification: the actual development server was started through the mana
 - EHS procedure/risk categories and emergency-event integration.
 - Which third-party integrations are actually needed, supported API/plan, credentials and record authority. DocuSign, Drive, Smartsheet and Labguru are explicitly not connected. NetSuite is not assumed.
 
-Next implementation focus: company-hosted acceptance environment and browser acceptance, then adoption of actual rules/reference data and selected phase-B/C/D extensions. The full program is not marked complete.
+Original next implementation focus (before the portable revision): company-hosted acceptance environment and browser acceptance, then adoption of actual rules/reference data and selected phase-B/C/D extensions. The full program is not marked complete.

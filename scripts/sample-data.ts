@@ -7,7 +7,7 @@ import { upload } from "../src/server/files";
 import { createQuality } from "../src/server/quality";
 import { createMaterial, receiveLot } from "../src/server/inventory";
 import { createQuestionnaire } from "../src/server/questionnaires";
-export async function populate() {
+export async function populate(credentialFile = ".local/demo-credentials.json") {
   if (process.env.APP_ENV !== "development") return;
   if (
     (await getPool().query("SELECT count(*) n FROM records")).rows[0].n !== "0"
@@ -15,7 +15,7 @@ export async function populate() {
     return;
   let seeded: Record<string, unknown>;
   try {
-    seeded = JSON.parse(await readFile(".local/demo-credentials.json", "utf8"));
+    seeded = JSON.parse(await readFile(credentialFile, "utf8"));
   } catch {
     return;
   }
@@ -60,7 +60,7 @@ export async function populate() {
       );
       s.users.qa_reviewer = u;
       await writeFile(
-        ".local/demo-credentials.json",
+        credentialFile,
         JSON.stringify(s, null, 2),
         { mode: 0o600 },
       );

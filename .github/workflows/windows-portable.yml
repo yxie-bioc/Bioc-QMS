@@ -1,0 +1,68 @@
+name: Windows portable package
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-portable-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      BBC_BROWSER_TEST: '1'
+      BBC_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - name: Install locked build dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Type and business regression checks
+        run: |
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the Windows runtime with verified binaries
+        run: npm run package:windows
+      - name: Create and unpack the deliverable before testing
+        shell: pwsh
+        run: |
+          $package = Join-Path $PWD 'dist/BBC-QMS-Windows-x64'
+          $archive = Join-Path $PWD 'dist/BBC-QMS-Windows-x64.zip'
+          [System.IO.Compression.ZipFile]::CreateFromDirectory($package, $archive, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+          New-Item -ItemType Directory -Path .local/unpacked -Force | Out-Null
+          [System.IO.Compression.ZipFile]::ExtractToDirectory($archive, (Join-Path $PWD '.local/unpacked'))
+          (Get-FileHash dist/BBC-QMS-Windows-x64.zip -Algorithm SHA256).Hash.ToLower() | Set-Content dist/BBC-QMS-Windows-x64.zip.sha256
+      - name: Prepare the test browser
+        run: npx playwright install chromium
+      - name: Test extracted package with bundled runtime and restricted PATH
+        env:
+          BBC_PACKAGE: .local/unpacked/BBC-QMS-Windows-x64
+        run: npm run test:portable
+      - name: Deliver tested complete runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: BBC-QMS-Windows-x64
+          path: |
+            dist/BBC-QMS-Windows-x64.zip
+            dist/BBC-QMS-Windows-x64.zip.sha256
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+      - name: Attach non-secret browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Windows-acceptance-evidence
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore

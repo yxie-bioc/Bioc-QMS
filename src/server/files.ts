@@ -61,7 +61,7 @@ export async function upload(
     bytes[0] === 0x50 &&
     bytes[1] === 0x4b;
   must(pdf || docx, "Upload a PDF or DOCX file", 400);
-  const name = file.name.replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 160);
+  const name = file.name.normalize("NFC").replace(/[^\p{L}\p{N}._ ()-]/gu, "_").slice(0, 160);
   return transaction(
     actorId,
     "File.upload",

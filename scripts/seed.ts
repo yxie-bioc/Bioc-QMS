@@ -1,4 +1,5 @@
 import pg from "pg";
+import { dirname } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { hashPassword } from "../src/server/core";
@@ -140,7 +141,7 @@ export async function seed(url: string, credentialFile?: string) {
       users,
     };
     if (credentialFile) {
-      await mkdir(".local", { recursive: true, mode: 0o700 });
+      await mkdir(dirname(credentialFile), { recursive: true, mode: 0o700 });
       await writeFile(credentialFile, JSON.stringify(result, null, 2), {
         mode: 0o600,
       });

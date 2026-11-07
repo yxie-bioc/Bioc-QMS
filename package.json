@@ -1,6 +1,6 @@
 {
   "name": "bbc-internal-platform",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node --import tsx scripts/dev.ts",
     "build": "next build",
-    "start": "node --env-file-if-exists=.env.local node_modules/next/dist/bin/next start --hostname 0.0.0.0",
+    "start": "node --env-file-if-exists=.env.local node_modules/next/dist/bin/next start --hostname 127.0.0.1",
     "typecheck": "next typegen && tsc --noEmit",
     "db:local": "node --import tsx scripts/local-postgres.ts",
     "db:migrate": "node --env-file-if-exists=.env.ops.local --import tsx scripts/migrate.ts",
@@ -18,7 +18,10 @@
     "test": "node --import tsx scripts/test.ts",
     "backup": "node --env-file-if-exists=.env.ops.local --import tsx scripts/backup.ts",
     "verify:restore": "node --env-file-if-exists=.env.ops.local --import tsx scripts/verify-restore.ts",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/*.{ts,mjs}\" \"tests/*.ts\" \"*.{json,ts,mjs,md}\" \"docs/*.md\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/*.{ts,mjs}\" \"tests/*.ts\" \"*.{json,ts,mjs,md}\" \"docs/*.md\"",
+    "package:windows": "node packaging/build.mjs --windows",
+    "package:local": "node packaging/build.mjs --local",
+    "test:portable": "node --test tests/portable.test.mjs"
   },
   "dependencies": {
     "lucide-react": "1.69.0",
@@ -26,15 +29,17 @@
     "pg": "8.23.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "zod": "4.6.7",
-    "tsx": "4.23.15"
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "embedded-postgres": "17.11.0-beta.19",
+    "esbuild": "0.27.4",
     "prettier": "3.9.10",
     "typescript": "7.0.2"
   }

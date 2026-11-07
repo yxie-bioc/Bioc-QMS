@@ -42,6 +42,7 @@ import { runWorker } from "../src/server/worker";
 import { GET, POST } from "../src/app/api/[...path]/route";
 import { NextRequest } from "next/server";
 import { makeBackup, restoreBackup } from "../scripts/backup";
+const testRoot = process.env.TEST_WORK_DIR!;
 let s: NonNullable<Awaited<ReturnType<typeof seed>>>;
 let doc: { id: string; revisionId: string }, fileId: string;
 let owner: pg.Client;
@@ -126,8 +127,8 @@ before(async () => {
   await owner.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
   await migrate(process.env.TEST_MIGRATION_DATABASE_URL!);
   s = (await seed(process.env.TEST_MIGRATION_DATABASE_URL!))!;
-  await mkdir(".local", { recursive: true });
-  await writeFile(".local/test-fixtures.json", JSON.stringify(s), {
+  await mkdir(testRoot, { recursive: true });
+  await writeFile(`${testRoot}/fixtures.json`, JSON.stringify(s), {
     mode: 0o600,
   });
 });
@@ -198,6 +199,17 @@ test("Public API, search, exports and mutations require authentication; login ch
   assert.equal(response.status, 200);
   assert.match(response.headers.get("set-cookie")!, /HttpOnly/i);
   assert.match(response.headers.get("set-cookie")!, /SameSite=strict/i);
+});
+test("Configured origins cannot be widened by forged Host or forwarded headers", async () => {
+  const req = new NextRequest("http://evil.example/api/auth/login", {
+    method: "POST", headers: {host:"evil.example",origin:"http://evil.example","x-forwarded-host":"evil.example","content-type":"application/json"},
+    body: JSON.stringify({email:s.users.owner.email,password:s.users.owner.password}),
+  });
+  assert.equal((await POST(req,{params:Promise.resolve({path:["auth","login"]})})).status,403);
+  const safeHost = new NextRequest("http://localhost:3000/api/auth/login", {
+    method:"POST",headers:{host:"localhost:3000",origin:"http://evil.example","x-forwarded-host":"evil.example","content-type":"application/json"},body:"{}",
+  });
+  assert.equal((await POST(safeHost,{params:Promise.resolve({path:["auth","login"]})})).status,403);
 });
 test("Create a real SOP with a private file; scope is enforced for API, search, export and download", async () => {
   doc = await createDocument(
@@ -1489,14 +1501,14 @@ test(
           DATABASE_URL: workerUrl,
           WORKER_DATABASE_URL: workerUrl,
         },
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
     );
     let output = "";
     const timer = setTimeout(() => child.kill("SIGKILL"), 10000);
-    child.stdout.on("data", (b) => {
+    child.stdout!.on("data", (b) => {
       output += b.toString();
-      if (output.includes('"delivered"')) child.kill("SIGTERM");
+      if (output.includes('"delivered"')) child.send("stop");
     });
     const code = await new Promise<number | null>((r) => child.on("exit", r));
     clearTimeout(timer);
@@ -1506,12 +1518,12 @@ test(
 );
 
 test("Database and actual attachment bytes restore into an independent database and storage directory", async () => {
-  await rm(".local/test-backup", { recursive: true, force: true });
-  await rm("./var/restored-test-attachments", { recursive: true, force: true });
+  await rm(`${testRoot}/backup`, { recursive: true, force: true });
+  await rm(`${testRoot}/restored-attachments`, { recursive: true, force: true });
   const backup = await makeBackup(
     process.env.TEST_MIGRATION_DATABASE_URL!,
     process.env.ATTACHMENT_DIR!,
-    ".local/test-backup",
+    `${testRoot}/backup`,
   );
   const admin = new pg.Client({
     connectionString: process.env.ADMIN_DATABASE_URL,
@@ -1529,8 +1541,8 @@ test("Database and actual attachment bytes restore into an independent database 
   );
   const result = await restoreBackup(
     restoreUrl,
-    ".local/test-backup",
-    "./var/restored-test-attachments",
+    `${testRoot}/backup`,
+    `${testRoot}/restored-attachments`,
   );
   assert.equal(result.files, backup.files);
   assert.ok(result.records > 0);

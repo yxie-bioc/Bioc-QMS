@@ -5,9 +5,10 @@ import {
   login,
   logout,
   checkOrigin,
+  checkHost,
   manageUser,
 } from "@/server/auth";
-import { Fault, uuid, sha } from "@/server/core";
+import { Fault, uuid, getPool } from "@/server/core";
 import {
   overview,
   listRecords,
@@ -94,7 +95,12 @@ function fail(e: unknown) {
 }
 export async function GET(req: NextRequest, ctx: Context) {
   try {
+    checkHost(req);
     const p = (await ctx.params).path;
+    if (p.join("/") === "health") {
+      await getPool().query("SELECT 1");
+      return json({ ok: true, version: process.env.BBC_VERSION ?? "0.2.0", environment: process.env.APP_ENV });
+    }
     const actor = await authenticate(req);
     if (p[0] === "overview") return json(await overview(actor));
     if (p[0] === "records" && p[1])
@@ -115,7 +121,7 @@ export async function GET(req: NextRequest, ctx: Context) {
         headers: {
           ...headers,
           "Content-Type": file.media_type,
-          "Content-Disposition": `attachment; filename="${file.filename.replace(/["\\]/g, "_")}"`,
+          "Content-Disposition": `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
           "Content-Security-Policy": "default-src 'none'; sandbox",
         },
       });
@@ -154,7 +160,7 @@ export async function POST(req: NextRequest, ctx: Context) {
       throw new Fault(413, "Request exceeds the upload limit");
     const p = (await ctx.params).path;
     if (p.join("/") === "auth/login") {
-      const d = await req.json();
+      const d = JSON.parse((await boundedBody(req)).toString("utf8"));
       const session = await login(d);
       const response = json({ ok: true });
       response.cookies.set("bbc_session", session.token, {
@@ -181,7 +187,8 @@ export async function POST(req: NextRequest, ctx: Context) {
     const actor = await authenticate(req);
     const key = uuid.parse(req.headers.get("idempotency-key"));
     if (p[0] === "attachments") {
-      const form = await req.formData();
+      const bytes = await boundedBody(req);
+      const form = await new Response(new Uint8Array(bytes), { headers: { "content-type": req.headers.get("content-type") ?? "" } }).formData();
       const f = form.get("file");
       if (!(f instanceof File)) throw new Fault(400, "File required");
       return json(
@@ -196,7 +203,7 @@ export async function POST(req: NextRequest, ctx: Context) {
         ),
       );
     }
-    const d = await req.json();
+    const d = JSON.parse((await boundedBody(req)).toString("utf8"));
     const id = p[1] ? uuid.safeParse(p[1]) : null;
     if (p[0] === "documents" && p.length === 1)
       return json(await createDocument(actor, d, key));
@@ -253,4 +260,24 @@ export async function POST(req: NextRequest, ctx: Context) {
   } catch (e) {
     return fail(e);
   }
+}
+
+async function boundedBody(req: Request) {
+  const reader = req.body?.getReader();
+  if (!reader) throw new Fault(400, "Request body required");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 12 * 1024 * 1024) {
+        await reader.cancel();
+        throw new Fault(413, "Request exceeds the upload limit");
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  return Buffer.concat(chunks);
 }

@@ -4,9 +4,17 @@ A working modular monolith for Waltham internal quality and laboratory operation
 
 **Status:** development baseline. Phase A is implemented and integration-tested; phases B/C have working foundational workflows; phase D has initial cell/antibody fields only. This is **not** a validated production release and makes no GLP, GMP or 21 CFR Part 11 compliance claim. Sample rules and synthetic data are not BBC-approved procedures or factual qualification statements.
 
-## Start locally
+## Windows users
 
-Use Node.js 24 (tested: 24.22.1), npm and an ordinary non-root user. The executed development checks used Linux; Windows/WSL2 and macOS compatibility have not been exercised.
+Use the complete **BBC-QMS-Windows-x64.zip** runtime artifact from the Windows portable package workflow; GitHub's source ZIP is not runnable on its own. Extract it and double-click **启动网站.cmd**. The Chinese local controller handles setup, start/stop, status, backups, isolated restoration and explicit LAN settings. Node and PostgreSQL are bundled; optional Microsoft C++ runtime preparation may be needed once.
+
+[中文快速指南](docs/WINDOWS_QUICKSTART.zh-CN.md) · [Portable maintenance and security boundary](docs/WINDOWS_MAINTENANCE.md)
+
+Default access is local only. Colleagues later use the host's configured website URL and individual accounts. Use a separate clean instance before real business adoption. The project is not formally validated; current acceptance evidence and unverified platforms are tracked in docs/STATUS.md.
+
+## Developer startup
+
+Use Node.js 24 (tested: 24.22.1), npm and an ordinary non-root user. Business regression checks have been executed on Linux and Windows Server 2022. Portable-package acceptance and remaining desktop/LAN checks are recorded separately in docs/STATUS.md. macOS and WSL are not delivery targets for this revision.
 
 ```sh
 npm ci
@@ -55,4 +63,4 @@ Tests start a **separate PostgreSQL cluster**, recreate only its `bbc_test` sche
 - [Deployment, backup, restore and maintenance](docs/OPERATIONS.md)
 - [Stage progress, executed tests and open decisions](docs/STATUS.md)
 
-All code, migrations, lockfiles and configuration examples are in this repository. No remote repository, production resources or external app writes were created. The company can import this Git repository and run it on company-controlled infrastructure.
+All code, migrations, lockfiles and configuration examples are in this repository. Revisions are developed in a branch and pull request in the company-selected GitHub repository. No main-branch merge, production deployment or external business-system write is included.

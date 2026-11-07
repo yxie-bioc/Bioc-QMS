@@ -70,7 +70,7 @@ const nav = [
 const qKinds = ["Deviation", "CAPA", "Change", "Audit"];
 const date = (s: string | null | undefined) =>
   s
-    ? new Date(s).toLocaleDateString("en-US", {
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -1236,9 +1236,9 @@ function Login({
             </span>
           </div>
           <div className="sample-note">
-            Development build · Synthetic records only
+            Internal controlled workspace · Sample rules pending approval
             <br />
-            Assigned development credentials are provided separately.
+            Use your assigned account. Test accounts are available only in the local test controller.
           </div>
         </form>
       </div>
