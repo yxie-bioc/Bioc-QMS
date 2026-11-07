@@ -1,3 +1,60 @@
+BBC Internal Quality & Operations Platform 0.2.0
+Engineering verification record; not formal business validation.
+Verified Windows source: 8574a21953175a834b72cb05ba30edc0a410fbe3
+Baseline main: de860459c9ed566b3e446219bb70f92d135527cb
+CI: https://github.com/yxie-bioc/Bioc-QMS/actions/runs/42333997420
+Completed: 2026-11-07T03:28:12Z (2026-11-06 evening in America/New_York)
+Environment: GitHub-hosted Windows Server 2022 x64, Node 24.22.1,
+PostgreSQL 17.11 EDB native binaries, Next.js 16.4.5, React 19.3.1.
+
+EXECUTED AND PASSED
+- Locked dependency install, strict TypeScript, optimized standalone build.
+- 29 PostgreSQL service/route integration tests; zero failures/skips.
+- Native Windows binary hashes, Node Authenticode and retained licenses.
+- ZIP created, unpacked and exercised with bundled Node and restricted PATH.
+- Actual Chinese Start/Stop command files; package-integrity verification.
+- Chinese/space program and data paths; current-user private directory aliases.
+- Chinese maintenance UI first setup, status and ordinary website link.
+- Randomized synthetic users; unauthenticated and out-of-scope requests denied.
+- SOP browser workflow: create, Chinese-named private upload, independent review,
+  independent approval, revision-bound training, effectiveness, download,
+  second revision preserving history, logout. America/New_York date display.
+- Duplicate launch; stop/restart preserving records; owned controller crash and
+  authenticated PostgreSQL recovery; occupied-port error; separate clean instance.
+- Website, worker and database lifecycle tracked separately.
+- Same-host LAN HTTP synthetic mode and HTTPS using explicit test CA verification:
+  login, authenticated upload/download, Secure/HttpOnly/SameSite=Strict cookie,
+  forged Host and Origin denied; local mode absent on LAN; DB absent on LAN.
+- Actual attachment/database backup, independently restored empty instance,
+  record counts, attachment hashes, revision relationships and inventory ledger.
+- Synthetic package upgrade: pre-upgrade backup and independent restore check,
+  new test migration, preserved data; failed test migration rolled back, website
+  and worker stayed stopped; last working package recovered the instance.
+- Portable scenario: 1 aggregate end-to-end test, 55.90 seconds, zero failures.
+  This is one scenario containing the checks above, not 29 additional tests.
+- Linux: independently re-executed 29 integration tests, TypeScript/build and
+  packaged lifecycle/browser/upgrade checks. LAN/TLS skipped there because
+  that host had no usable private IPv4 interface; Windows executed that portion.
+
+BOUNDARIES / NOT VERIFIED
+- Fresh Windows 10 22H2 or Windows 11 desktop without installed development tools.
+  PATH was restricted in CI, but the hosted OS already contained system runtimes.
+- Interactive default-browser launch, SmartScreen/UAC, optional Microsoft C++
+  installer, and enterprise endpoint protection under an ordinary desktop user.
+- A genuinely Chinese Windows account name (Unicode directories were exercised).
+- A second physical LAN computer, company DNS, real company certificate trust,
+  certificate renewal, Windows firewall permissions, or off-host disaster recovery.
+- Production load/failover, actual approved business rules, formal validation.
+- Automatic backup scheduling, Windows service/autostart and third-party
+  integrations are not implemented. Backups are explicit manual operations.
+
+Runtime files and test credentials/databases/attachments/logs are excluded from
+Git. The delivered archive is built before tests initialize any instance.
+Migrations 001-008 preserve original contents; extra upgrade-test migrations exist
+only in isolated synthetic test copies.
+
+----- HISTORICAL 0.1.0 RECORD (not current Windows evidence) -----
+
 BBC Internal Quality & Operations Platform 0.1.0
 Development verification record; not formal validation.
 Executed: 2026-11-06T05:16:21.025903+00:00
