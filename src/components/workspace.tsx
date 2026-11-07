@@ -70,7 +70,7 @@ const nav = [
 const qKinds = ["Deviation", "CAPA", "Change", "Audit"];
 const date = (s: string | null | undefined) =>
   s
-    ? new Date(s).toLocaleDateString("en-US", {
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",

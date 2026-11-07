@@ -10,6 +10,7 @@ exit /b
 echo BBC QMS: Please extract the COMPLETE Windows package before starting.
 echo The bundled Node runtime is missing. Do not use the source-code ZIP.
 pause
+exit /b 1
 
 :prerequisite
 echo Microsoft Visual C++ Runtime is missing.

@@ -40,6 +40,12 @@ export class Cluster {
       const passwordFile=path.join(this.root,`init-${randomBytes(8).toString('hex')}.tmp`);
       await fs.writeFile(passwordFile,this.secrets.postgres,{mode:0o600,flag:'wx'});
       try { await execute(this.bin('initdb'),['-D',this.data,'-U','postgres','--auth=scram-sha-256','--encoding=UTF8','--locale=C',`--pwfile=${passwordFile}`]); }
+      catch(e){
+        let detail=e.detail||e.message;
+        for(const value of Object.values(this.secrets))detail=detail.replaceAll(value,'[redacted]');
+        await fs.writeFile(path.join(this.root,'logs','initialization-error.log'),detail,{mode:0o600});
+        throw new Error(`${e.message}\n${detail.slice(-3000)}`);
+      }
       finally { await fs.rm(passwordFile,{force:true}); }
     }
     this.port=await freePort();

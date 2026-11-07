@@ -21,7 +21,7 @@ export function validateNetwork(input, kind) {
   if(!privateAddresses().includes(input.bind)) throw new Error('请选择当前主机实际存在的内网 IPv4 地址。地址变化后需重新选择。');
   if(mode==='lan-test' && kind!=='demo') throw new Error('HTTP 内网试验仅允许合成数据实例；空白业务实例需要 HTTPS。');
   const scheme=mode==='lan-https'?'https':'http';
-  const origin=new URL(input.origin||`${scheme}://${input.bind}:${port}`);
+  const origin=new URL(input.origin||input.origins?.[0]||`${scheme}://${input.bind}:${port}`);
   if(origin.protocol!==scheme+':'||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash||Number(origin.port||443)!==port)
     throw new Error('请填写与所选端口一致的完整访问地址，例如 https://qms.internal.example:8765。');
   return {mode,port,bind:input.bind,origins:[origin.origin],cert:input.cert||'',key:input.key||''};
@@ -55,7 +55,8 @@ export class Stack {
       const { X509Certificate }=await import('node:crypto');
       const cert=new X509Certificate(tlsOptions.cert);
       const hostname=new URL(net.origins[0]).hostname;
-      if(!(cert.checkHost(hostname)||cert.checkIP(hostname))||Date.parse(cert.validTo)<Date.now()||Date.parse(cert.validFrom)>Date.now())
+      const { isIP }=await import('node:net');
+      if(!(isIP(hostname)?cert.checkIP(hostname):cert.checkHost(hostname))||Date.parse(cert.validTo)<Date.now()||Date.parse(cert.validFrom)>Date.now())
         throw new Error('证书主机名或有效期与访问地址不匹配，请联系 IT。');
     }
     for(const name of ['web','worker']){const log=path.join(this.instance,'logs',name+'.log');if(await exists(log)&&(await fs.stat(log)).size>1024*1024)await fs.rename(log,log+'.previous').catch(()=>{});}

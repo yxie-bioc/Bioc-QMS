@@ -243,7 +243,7 @@ export async function detail(actorId: string, id: string) {
         ).rows;
       }
       return {
-        record,
+        record: { ...record, ...context },
         data,
         attachments: attachments.rows,
         tasks: tasks.rows,
