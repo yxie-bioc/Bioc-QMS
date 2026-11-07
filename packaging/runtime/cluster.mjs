@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { exists, jsonFile, readJson, execute, freePort } from './common.mjs';
+import { exists, jsonFile, readJson, execute, freePort, postgresPaths } from './common.mjs';
 export class Cluster {
   constructor(instance, pgRoot, executeQuery) { this.query=executeQuery; this.root=instance; this.pgRoot=pgRoot; this.data=path.join(instance,'postgres'); this.started=false; }
   bin(name) { return path.join(this.pgRoot,'bin',name+(process.platform==='win32'?'.exe':'')); }
@@ -11,6 +11,8 @@ export class Cluster {
   }
   async start() {
     await fs.mkdir(this.root,{recursive:true,mode:0o700});
+    const compatible=await postgresPaths(this.root,this.pgRoot);
+    this.root=compatible.instance;this.pgRoot=compatible.binaries;this.data=path.join(this.root,'postgres');
     await fs.mkdir(path.join(this.root,'logs'),{recursive:true,mode:0o700});
     const secretsFile=path.join(this.root,'secrets.json');
     if(await exists(secretsFile)) this.secrets=await readJson(secretsFile);
@@ -39,7 +41,7 @@ export class Cluster {
     } else {
       const passwordFile=path.join(this.root,`init-${randomBytes(8).toString('hex')}.tmp`);
       await fs.writeFile(passwordFile,this.secrets.postgres,{mode:0o600,flag:'wx'});
-      try { await execute(this.bin('initdb'),['-D',this.data,'-U','postgres','--auth=scram-sha-256','--encoding=UTF8','--locale=C',`--pwfile=${passwordFile}`]); }
+      try { await execute(this.bin('initdb'),['-D',this.data,'-U','postgres','--auth=scram-sha-256','--encoding=UTF8','--locale=C',`--pwfile=${passwordFile}`],{cwd:this.pgRoot}); }
       catch(e){
         let detail=e.detail||e.message;
         for(const value of Object.values(this.secrets))detail=detail.replaceAll(value,'[redacted]');
@@ -56,7 +58,7 @@ export class Cluster {
       "log_parameter_max_length_on_error = 0", "max_connections = 60", "shared_buffers = '64MB'", ''
     ].join('\n'),{mode:0o600});
     await jsonFile(stateFile,{port:this.port,dataDirectory:this.data});
-    await execute(this.bin('pg_ctl'),['-D',this.data,'-l',path.join(this.root,'logs','postgres.log'),'-w','-t','60','start']);
+    await execute(this.bin('pg_ctl'),['-D',this.data,'-l',path.join(this.root,'logs','postgres.log'),'-w','-t','60','start'],{cwd:this.pgRoot});
     this.started=true;
     await this.provision();
   }
@@ -76,7 +78,7 @@ export class Cluster {
     if(!this.started) return;
     const actual=await this.query(this.url('postgres','postgres'),'SHOW data_directory');
     if(path.resolve(actual[0].data_directory)!==path.resolve(this.data)) throw new Error('拒绝停止不属于此实例的数据库。');
-    await execute(this.bin('pg_ctl'),['-D',this.data,'-m','fast','-w','-t','60','stop']);
+    await execute(this.bin('pg_ctl'),['-D',this.data,'-m','fast','-w','-t','60','stop'],{cwd:this.pgRoot});
     this.started=false;
   }
 }

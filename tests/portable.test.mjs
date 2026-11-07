@@ -84,7 +84,7 @@ async function browserWorkflow(t){
  const {chromium,expect}=await import('@playwright/test');const browser=await chromium.launch({headless:true});
  let context,page;const title='Portable acceptance SOP '+randomUUID().slice(0,8);
  const signin=async who=>{
-  if(context)await context.close();context=await browser.newContext({viewport:{width:1440,height:1000}});page=await context.newPage();
+  if(context)await context.close();context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'America/New_York'});page=await context.newPage();
   await page.goto(origin);await page.locator('[name=email]').fill(users[who].email);await page.locator('[name=password]').fill(users[who].password);await page.getByRole('button',{name:'Sign in to workspace'}).click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
  };
  const openDoc=async()=>{await page.getByRole('button',{name:'Document control',exact:true}).click();await page.getByRole('button',{name:'Open '+title,exact:true}).click();};
@@ -118,14 +118,15 @@ async function run(file,args,options={}){
  const child=spawn(file,args,{env,stdio:['ignore','pipe','pipe'],...options});let output='';
  child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);
  await new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(new Error(`${path.basename(file)} failed (${code}): ${output.slice(-2000)}`)));});
+ return output;
 }
 async function commandLauncherSmoke(){
  const home=path.join(scratch,'启动入口 数据');
- const options={env:{...env,BBC_DATA_HOME:home},windowsVerbatimArguments:true};
- await run('cmd.exe',['/d','/s','/c',`""${path.join(program,'启动网站.cmd')}""`],options);
- const state=JSON.parse(await fs.readFile(path.join(home,'controller.json')));
+ const options={env:{...env,BBC_DATA_HOME:home,BBC_LAUNCH_CMD:path.join(program,'启动网站.cmd')},windowsVerbatimArguments:true};
+ const output=await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options);
+ const state=await fs.readFile(path.join(home,'controller.json')).then(b=>JSON.parse(b)).catch(()=>{throw new Error('Windows launcher did not start: '+output);});
  assert.equal((await fetch(`http://127.0.0.1:${state.port}/status`,{headers:{authorization:`Bearer ${state.token}`}})).status,200);
- await run('cmd.exe',['/d','/s','/c',`""${path.join(program,'停止网站.cmd')}""`],options);
+ options.env.BBC_LAUNCH_CMD=path.join(program,'停止网站.cmd');await run('cmd.exe',['/d','/s','/c','call "%BBC_LAUNCH_CMD%"'],options);
  await assert.rejects(fs.access(path.join(home,'controller.json')));
 }
 async function networkWorkflow(t){
@@ -147,7 +148,7 @@ async function networkWorkflow(t){
   const r=https.request(origin+p,{method,ca,headers},response=>{const chunks=[];response.on('data',b=>chunks.push(b));response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,bytes:Buffer.concat(chunks)}));});r.on('error',reject);r.end(body);
  });
  const logged=await request('/api/auth/login','POST',{origin,'content-type':'application/json'},JSON.stringify(users.owner));assert.equal(logged.status,200);
- const cookies=logged.headers['set-cookie'];assert.match(cookies[0],/; Secure/i);assert.match(cookies[0],/; HttpOnly/i);assert.match(cookies[0],/SameSite=Lax/i);
+ const cookies=logged.headers['set-cookie'];assert.match(cookies[0],/; Secure/i);assert.match(cookies[0],/; HttpOnly/i);assert.match(cookies[0],/SameSite=Strict/i);
  const auth={cookie:cookies[0].split(';')[0],origin};
  assert.equal((await request('/api/overview','GET',auth)).status,200);
  assert.equal((await request('/api/health','GET',{host:'evil.example'})).status,403);

@@ -13,7 +13,7 @@ export async function jsonFile(p, value) {
 export function safeEnv(extra = {}) {
   // Explicit allowlist: no inherited database, cloud, npm, bootstrap or test secrets.
   const env = {};
-  for(const key of ['SystemRoot','SYSTEMROOT','WINDIR','ComSpec','COMSPEC','TEMP','TMP','PATH','Path','LOCALAPPDATA','USERPROFILE','HOME','LANG','LC_ALL','TZ'])
+  for(const key of ['SystemRoot','SYSTEMROOT','WINDIR','ComSpec','COMSPEC','TEMP','TMP','PATH','Path','LOCALAPPDATA','ProgramData','USERPROFILE','HOME','LANG','LC_ALL','TZ'])
     if(process.env[key]) env[key]=process.env[key];
   return {...env, NEXT_TELEMETRY_DISABLED:'1', NODE_ENV:'production', ...extra};
 }
@@ -36,6 +36,25 @@ export async function protectDirectory(dir) {
   } else await fs.chmod(dir,0o700);
 }
 export function alive(pid) { try { process.kill(pid,0); return true; } catch(e) { return e.code==='EPERM'; } }
+// EDB's native command-line tools use the Windows ANSI code page for paths.
+// NTFS junctions provide ASCII aliases without moving/copying data or changing
+// system locale, short-name policy, privileges, or the signed vendor binaries.
+export async function postgresPaths(instance, binaries) {
+  if(process.platform!=='win32'||!/[^\x00-\x7f]/.test(instance+binaries))return {instance,binaries};
+  const sid=(await execute('whoami.exe',['/user','/fo','csv','/nh'])).match(/S-1-5-[\d-]+/)?.[0];
+  if(!sid)throw new Error('无法确认 Windows 用户以建立 PostgreSQL 路径兼容入口。');
+  const base=path.join(process.env.ProgramData||path.resolve(process.env.SystemRoot,'..','ProgramData'),`BBC-QMS-${sid}`);
+  if(/[^\x00-\x7f]/.test(base))throw new Error('本机 ProgramData 路径不能提供 PostgreSQL 的 ASCII 兼容入口，请联系 IT。');
+  try {await protectDirectory(base);}catch {throw new Error(`无法建立当前用户专用的 PostgreSQL 路径入口：${base}。请由 IT 检查此目录权限，无需关闭系统保护。`);}
+  async function alias(target,prefix){
+    const absolute=path.resolve(target),id=createHash('sha256').update(absolute.toLowerCase()).digest('hex').slice(0,24);
+    const link=path.join(base,`${prefix}-${id}`);
+    try{await fs.symlink(absolute,link,'junction');}catch(e){if(e.code!=='EEXIST')throw e;}
+    if((await fs.realpath(link)).toLowerCase()!==(await fs.realpath(absolute)).toLowerCase())throw new Error('现有 PostgreSQL 兼容入口指向其他目录，拒绝替换。');
+    return link;
+  }
+  return {instance:await alias(instance,'data'),binaries:await alias(binaries,'runtime')};
+}
 export async function freePort(port=0, host='127.0.0.1') {
   return new Promise((resolve,reject)=>{
     const s=net.createServer(); s.once('error',()=>reject(new Error(`端口 ${port} 已占用。请在设置中选择其他端口；不会停止其他程序。`)));
